@@ -1,0 +1,32 @@
+---
+source: tests/cli_snapshots.rs
+expression: out
+---
+{
+  "id": 1001,
+  "card": 1,
+  "name": "Тимофей Яшин",
+  "phone": "79175555111",
+  "email": "",
+  "comment": "",
+  "visits_count": 55,
+  "total": 56468,
+  "credit": 651,
+  "birthday": null,
+  "bonus_points": 0,
+  "created_at": 1466162671,
+  "last_visit_at": 1697536800,
+  "groups": [],
+  "appleWalletLink": "https://demo.hookah.name/pass/8ienoacytem7esd7",
+  "isAppleWalletAdded": false,
+  "bonus_level_id": 4,
+  "bonus_level": "Илита ",
+  "bonusLevel": {
+    "id": 4,
+    "name": "Илита ",
+    "money": 50000,
+    "percent_earn": 25,
+    "percent_earn_sale": 25,
+    "percent_spend": 50
+  }
+}

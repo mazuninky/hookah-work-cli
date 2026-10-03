@@ -1,0 +1,78 @@
+---
+source: tests/cli_snapshots.rs
+expression: help
+---
+Bookings of one business day (deleted bookings excluded)
+
+Usage: hw booking list [OPTIONS]
+
+Options:
+      --date <DATE>
+          Business day: today (default), yesterday, tomorrow or YYYY-MM-DD; the CRM applies its night shift to relative days
+
+      --expand <FIELD>
+          Nested data to include (comma-separated or repeated); `total` costs one query per booking
+
+          Possible values:
+          - client:           The linked client
+          - table:            The table
+          - sales:            Sales at the table
+          - hookahs:          Hookahs served
+          - payments:         Payments
+          - credit:           Debt operations
+          - bonus-operations: Bonus point operations
+          - total:            Bill total
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Global Options:
+  -v, --verbose...
+          Increase logging verbosity (-v, -vv, -vvv); logs go to stderr
+
+  -q, --quiet
+          Print only errors to stderr: no hints, no warnings
+
+      --config <PATH>
+          Configuration file [default: $XDG_CONFIG_HOME/hw/config.toml or ~/.config/hw/config.toml]
+          
+          [env: HW_CONFIG=]
+
+  -p, --profile <NAME>
+          Profile from the configuration file to use
+          
+          [env: HW_PROFILE=]
+
+      --crm <CRM>
+          CRM to talk to: subdomain (demo), host (demo.hookah.work) or base URL
+          
+          [env: HW_CRM=]
+
+  -F, --format <FORMAT>
+          Output format
+
+          Possible values:
+          - console: Tables and `key: value` lines for people
+          - json:    Pretty-printed JSON
+          - toon:    TOON, a compact JSON encoding for LLMs
+          - toml:    TOML (a top-level list is wrapped as `items`)
+          - csv:     CSV with a header row
+          
+          [default: console]
+
+      --no-color
+          Disable colored output (NO_COLOR is honoured too)
+
+      --no-pager
+          Do not page console output (also HW_NO_PAGER=1)
+
+      --jq <EXPR>
+          Filter the JSON result with a jq expression before formatting
+
+      --template <TPL>
+          Render the result with a minijinja template instead of --format
+
+      --retries <N>
+          Retries for rate limiting (429), server errors (5xx) and network failures; 0 disables
+          
+          [default: 3]

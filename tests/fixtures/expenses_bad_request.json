@@ -1,0 +1,7 @@
+{
+  "name": "Bad Request",
+  "message": "Параметр date обязателен (YYYY-MM-DD)",
+  "code": 0,
+  "status": 400,
+  "type": "yii\\web\\BadRequestHttpException"
+}

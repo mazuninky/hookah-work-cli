@@ -1,0 +1,7 @@
+{
+  "name": "Not Found",
+  "message": "Клиент не найден",
+  "code": 0,
+  "status": 404,
+  "type": "yii\\web\\NotFoundHttpException"
+}

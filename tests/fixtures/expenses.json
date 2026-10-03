@@ -1,0 +1,34 @@
+[
+  {
+    "id": 22,
+    "category_id": null,
+    "payment_method_id": 1,
+    "name": "test",
+    "notes": "",
+    "cost": 81,
+    "monthly": 0,
+    "created_at": 1633077420,
+    "category": null,
+    "paymentMethod": {
+      "id": 1,
+      "name": "наличными",
+      "type": 0
+    }
+  },
+  {
+    "id": 23,
+    "category_id": null,
+    "payment_method_id": 2,
+    "name": "коммуналка",
+    "notes": "",
+    "cost": 11791.89,
+    "monthly": 0,
+    "created_at": 1633077900,
+    "category": null,
+    "paymentMethod": {
+      "id": 2,
+      "name": "по карте",
+      "type": 1
+    }
+  }
+]
