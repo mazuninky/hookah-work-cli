@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    # .claude/ is local tooling (agents, conventions, rules, memory); only settings.json is shared.
+    claude-dir-guard:
+      run: |
+        staged=$(git diff --cached --name-only --diff-filter=ACMR -- .claude | grep -vx '.claude/settings.json' || true)
+        if [ -n "$staged" ]; then
+          echo "error: .claude/ is local-only (except settings.json); unstage:" >&2
+          echo "$staged" >&2
+          exit 1
+        fi
+    fmt-check:
+      run: cargo fmt --all -- --check
+    clippy:
+      run: cargo clippy --all-features --all-targets -- -D warnings
+    test:
+      run: cargo test --all-features

@@ -1,0 +1,14 @@
+# typos configuration — https://github.com/crate-ci/typos
+#
+# Run locally with: typos
+# CI gate: .github/workflows/ci.yml (job: typos)
+
+[files]
+extend-exclude = [
+  "Cargo.lock",
+  "docs/reference/hw.md",
+  "skill/references/commands.md",
+  "*.snap",
+]
+
+[default.extend-words]
