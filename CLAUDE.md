@@ -45,7 +45,10 @@ Pre-commit — `lefthook.yml` (fmt, clippy, test, guard на `.claude/`); обх
 - **Exit-коды** (`error::exit_code`) — публичный контракт, под тестами: 0 ok · 1 runtime/API/сеть ·
   2 not found · 3 config · 4 auth (нет/битый токен, 401/403) · 5 invalid input (clap usage-ошибки
   тоже 5, не 2; 400/422). Новый вариант `Error` = новая поверхность exit-кодов — расширяй осознанно.
-- **`docs/reference/hw.md` генерируется** (`hw generate-docs`) — руками не править.
+- **`docs/reference/hw.md` генерируется** (`hw generate-docs`) — руками не править; его копия
+  `skill/references/commands.md` тоже. Остальной скилл (`SKILL.md`, `references/{domain,usage,recipes}.md`)
+  пишется руками: при смене флагов, `--expand`/`--type` или полей ответа правь `usage.md`/`domain.md`,
+  CI их не сверяет. `--jq` в рецептах — диалект jaq; новые рецепты прогоняй на моке, не на живой CRM.
 - **`.claude/` не версионируется** (кроме `settings.json`): агенты, конвенции, правила, память —
   локальные. Упоминать в репозитории организацию, откуда портированы конвенции, нельзя — сторож в
   локальном `lefthook-local.yml`.

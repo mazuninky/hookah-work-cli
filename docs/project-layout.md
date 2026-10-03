@@ -53,8 +53,10 @@ Example: a hypothetical `GET /api/discounts?date=…` as `hw report discounts --
 4. **Tests** — a `FakeApi` test asserting the exact path and query pairs (see the existing tests in the
    same module), and a row in the `CASES` table of `tests/read_only.rs` (it fails until every leaf
    command is listed); an httpmock/CLI test if the command has new behaviour beyond a GET.
-5. **Docs** — run `scripts/gen-docs.sh` and commit `docs/reference/hw.md`; add the command to the
-   README table and to `skill/` if it is user-facing.
+5. **Docs** — run `scripts/gen-docs.sh` and commit `docs/reference/hw.md` and
+   `skill/references/commands.md`; add the command to the README table and to the hand-written skill
+   docs: `skill/references/usage.md` (command guide, `--expand`/`--type` values), new fields or
+   enums to `skill/references/domain.md`, and the `SKILL.md` table if it answers a common question.
 
 A new top-level group additionally needs a variant in `Command` (`src/cli/args/mod.rs`) and an arm in
 `app::execute` (`connect(cli, deps, true)` for authenticated endpoints, `false` for public ones).

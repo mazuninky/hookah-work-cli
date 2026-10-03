@@ -200,6 +200,15 @@ answer questions about a lounge with `hw` (bookings, sales, reports, clients):
 npx skills add mazuninky/hookah-work-cli
 ```
 
+| File | Contents |
+|---|---|
+| [`SKILL.md`](skill/SKILL.md) | Entry point: safety rules, composing a command, domain essentials, anti-examples |
+| [`references/domain.md`](skill/references/domain.md) | The HookahWork domain: entities and fields, booking statuses, checks and payments, bonuses and debts, business day, access rights, data pitfalls, Russian glossary |
+| [`references/usage.md`](skill/references/usage.md) | Using the CLI: auth, flags, formats, dates, pagination, `--expand` values, every command, exit codes, scripting |
+| [`references/recipes.md`](skill/references/recipes.md) | Typical lounge questions answered with ready commands and `--jq` |
+| [`references/commands.md`](skill/references/commands.md) | Generated flag reference (`scripts/gen-docs.sh`) |
+| [`evals/evals.json`](skill/evals/evals.json) | Prompts and assertions for evaluating the skill |
+
 The HookahWork CRM also ships its own MCP server (`https://<crm>.hookah.work/api/mcp`); `hw` is the
 scriptable, read-only alternative for terminals, CI and agents.
 
