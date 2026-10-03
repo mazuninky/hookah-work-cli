@@ -10,9 +10,10 @@ This document is the **operator checklist** for cutting a release. It does not d
 
 Before starting:
 
-- Local clone is on branch `master`, up to date with `origin/master`, and clean.
-- You can push tags to `origin` (`git push origin <tag>`).
-- You have permission to create releases on `mazuninky/hookah-work-cli`.
+- The local clone has no uncommitted changes. The script always works from `origin/master`, so the
+  current branch doesn't matter.
+- `gh` is installed and logged in (`gh auth status`): the script opens the release PR with it.
+- You can push branches and tags to `origin` and create releases on `mazuninky/hookah-work-cli`.
 
 ## Pre-release review (at least a few hours before)
 
@@ -20,53 +21,64 @@ Before starting:
    ```sh
    gh run list --branch master --workflow ci.yml --limit 5
    ```
-2. Skim merged PRs since the previous release:
+2. Skim merged PRs since the previous release (for the first release, everything on `master`):
    ```sh
-   git log --oneline $(git describe --tags --abbrev=0)..HEAD
+   git fetch origin --tags
+   git log --oneline $(git describe --tags --abbrev=0 origin/master 2>/dev/null && echo ..)origin/master
    ```
    If anything looks risky, either back it out or postpone the release.
-3. Verify the release notes are going to read well — GitHub generates them from PR titles, so any PRs merged with poor titles are the ones to fix **now** by editing the PR title and retitling the merge commit is not possible post-merge, but you can still fix the PR title so the auto-notes pick up the corrected version.
+3. GitHub generates the release notes from PR titles. Fix any poor PR titles **now**: a merged PR's
+   title can still be edited, and the notes pick up the corrected version.
 
 ## Cut the release
 
-1. **Bump the version.** From a clean `master`:
+`master` only changes through pull requests (squash-merge), so the version bump goes through a PR
+and the tag is put on its merge commit afterwards.
+
+1. **Prepare the release PR.**
    ```sh
+   ./scripts/bump-version.sh --dry-run   # prints the next version, touches nothing
    ./scripts/bump-version.sh
    ```
    The script:
-   - Computes the next `YYYY.WW.BUILD` from the latest `vYYYY.WW.*` tag.
-   - Rewrites `version = "…"` in the `[package]` section of `Cargo.toml`.
-   - Runs `cargo check` so `Cargo.lock` picks up the new version.
-   - Commits as `release: vYYYY.WW.BUILD` and creates an annotated tag `vYYYY.WW.BUILD`.
+   - Computes the next `YYYY.WW.BUILD` from the latest `vYYYY.WW.*` tag (the first release of a week
+     gets `BUILD` 1).
+   - Creates the branch `release/vYYYY.WW.BUILD` off `origin/master`.
+   - Rewrites `version = "…"` in the `[package]` section of `Cargo.toml` and refreshes
+     `Cargo.lock` (`cargo check`).
+   - Commits `release: vYYYY.WW.BUILD`, pushes the branch and opens a PR with that title, then
+     switches back to your branch.
 
-   Dry-run the next version without touching anything:
+2. **Merge the PR.** Wait for CI, then squash-merge it. Keep the title: the squash commit is titled
+   `release: vYYYY.WW.BUILD (#N)`, and the next step looks for it.
+
+3. **Tag the merged release.**
    ```sh
-   ./scripts/bump-version.sh --dry-run
+   ./scripts/bump-version.sh --tag --dry-run   # shows the commit it would tag
+   ./scripts/bump-version.sh --tag
    ```
+   The script reads the version from `Cargo.toml` on `origin/master`, finds the `release: vX`
+   commit there (later merges don't matter) and pushes an annotated tag `vYYYY.WW.BUILD` on it.
 
-2. **Push the commit and the tag.** The script prints the exact commands:
-   ```sh
-   git push origin master
-   git push origin vYYYY.WW.BUILD
-   ```
-
-3. **Watch the release workflow.** Pushing the tag triggers `.github/workflows/release.yml`:
+4. **Watch the release workflow.** The pushed tag triggers `.github/workflows/release.yml`:
    ```sh
    gh run watch --exit-status
    ```
    The workflow will:
    - Validate that the pushed tag matches `vYYYY.WW.BUILD` format **and** matches the `version` in `Cargo.toml`. A mismatch fails fast with a clear error.
    - Cross-compile three targets in parallel: `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`.
-   - Produce `hw-<version>-<target>.{tar.gz,zip}` plus a sibling `*.sha256`.
+   - Produce `hw-<version>-<target>.{tar.gz,zip}` plus a sibling `*.sha256`, and attest their build provenance.
    - Create a GitHub Release with `generate_release_notes: true` and attach every archive.
 
-4. **Verify the release.**
+5. **Verify the release.**
    ```sh
    gh release view vYYYY.WW.BUILD
+   gh release download vYYYY.WW.BUILD --pattern 'hw-*-aarch64-apple-darwin.tar.gz' --dir /tmp/hw-release
+   gh attestation verify /tmp/hw-release/hw-*.tar.gz --repo mazuninky/hookah-work-cli
    ```
    Check that all three archives and their `.sha256` companions are attached, and that the generated notes list the PRs you expect.
 
-5. **Smoke-test the installer.**
+6. **Smoke-test the installer.**
    ```sh
    curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh | sh
    hw --version   # should print YYYY.WW.BUILD
@@ -74,43 +86,41 @@ Before starting:
 
 ## If something goes wrong
 
-The release pipeline is designed to be re-runnable. If the workflow fails partway through, fix the underlying issue and re-tag rather than patching the broken release.
+A version number is never reused: once `--tag` has pushed `vX`, that tag stays, even if its release
+fails or is withdrawn. A fixed release is the next number, cut from step 1 of
+[Cut the release](#cut-the-release) after the fix lands on `master` through a PR. The bump script
+counts existing tags, so it picks the next number by itself.
 
 ### Workflow failed before the GitHub Release was created
 
-The tag exists but no release is attached. You have two options:
+The tag exists but no release is attached.
 
-- **Re-run the failed job** if the failure was transient (runner timeout, flaky download):
+- **Transient failure** (runner timeout, flaky download): re-run the failed jobs.
   ```sh
   gh run rerun <run-id> --failed
   ```
-- **Delete the tag and start over** if the failure is fixable in code:
-  ```sh
-  git push --delete origin vYYYY.WW.BUILD
-  git tag -d vYYYY.WW.BUILD
-  # fix the bug, land it on master, then rerun scripts/bump-version.sh
-  ```
-  The next bump will reuse the same `YYYY.WW.BUILD` number because nothing has consumed it yet.
+- **Fixable in code:** leave the tag alone, land the fix through a PR and cut the next release. The
+  tag without a release is harmless: the installer and `releases/latest` only see published
+  releases.
 
 ### GitHub Release exists but is wrong (missing asset, bad notes, wrong commit)
 
-1. **Delete the release and the tag** on the remote:
+1. **Delete the release, keep the tag:**
    ```sh
-   gh release delete vYYYY.WW.BUILD --cleanup-tag --yes
+   gh release delete vYYYY.WW.BUILD --yes
    ```
-   `--cleanup-tag` deletes the tag on the remote too. Also delete locally:
-   ```sh
-   git tag -d vYYYY.WW.BUILD
-   ```
-2. Land the fix on `master`, rerun the bump script, and re-tag.
+2. Land the fix on `master` through a PR and cut the next release.
+
+Notes alone can be fixed in place with `gh release edit vYYYY.WW.BUILD --notes-file …`.
 
 ### Version in Cargo.toml disagrees with the tag
 
-This is what `verify-version` catches. It means someone created a tag without running `scripts/bump-version.sh`, or edited `Cargo.toml` manually after the bump. Always cut releases through the script — do not hand-craft tags.
+This is what `verify-version` catches. It means someone created a tag without `scripts/bump-version.sh --tag`, or edited `Cargo.toml` manually after the bump. Always cut releases through the script — do not hand-craft tags.
 
 ## What *not* to do
 
 - **Do not hand-edit `Cargo.toml` to bump the version.** The script is the only supported path.
-- **Do not force-push to a release tag.** Tags are immutable from users' perspective; delete and re-create instead.
+- **Do not move or delete release tags.** Tags are immutable from users' perspective; cut the next version instead.
 - **Do not skip the pre-release CI check.** The release workflow does build-test as part of the cross-compile, but a broken test on `master` means a broken release.
-- **Do not cut releases from a branch other than `master`.** The bump script refuses this by default; `--force-branch` exists for emergencies only.
+- **Do not push the version bump straight to `master`.** It goes through the release PR like every other change; the script never pushes to `master`.
+- **Do not tag a commit that is not on `master`.** `--tag` only tags the merged `release: vX` commit of `origin/master`.
