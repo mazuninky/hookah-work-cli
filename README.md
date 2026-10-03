@@ -30,18 +30,21 @@ calendar-based: `YYYY.WW.BUILD` (year, ISO week, build), e.g. `2026.40.1`.
 ### Install script (Linux, macOS)
 
 [`scripts/install.sh`](scripts/install.sh) downloads a release, verifies its SHA-256 checksum and
-installs `hw` into `/usr/local/bin`:
+installs `hw` without sudo: into `/usr/local/bin` if you can write there, otherwise into
+`~/.local/bin` (it warns when that directory is not on your `PATH`). On macOS it also signs the
+binary ad hoc so that `hw` can use the login keychain.
 
 ```sh
 # Latest release
 curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh | sh
 
-# A specific version, into a directory you own (no sudo)
+# A specific version, into a directory of your choice
 curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh \
-  | sh -s -- --version 2026.40.1 --install-dir ~/.local/bin
+  | sh -s -- --version 2026.40.1 --install-dir ~/bin
 ```
 
-Review the script before piping it into `sh` if you don't trust the source.
+Run the same command again to upgrade. Review the script before piping it into `sh` if you don't
+trust the source.
 
 ### From GitHub Releases with attestation verification
 
