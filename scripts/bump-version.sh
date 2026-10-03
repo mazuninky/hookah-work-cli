@@ -73,9 +73,10 @@ package_version() {
     '
 }
 
-# Same format check as the release workflow: BUILD starts at 1.
+# Same format check as the release workflow: no leading zero in the week (Cargo versions are
+# semver, which rejects `2027.01.1`), BUILD starts at 1.
 valid_version() {
-    printf '%s' "$1" | grep -Eq '^[0-9]{4}\.(0[1-9]|[1-4][0-9]|5[0-3])\.[1-9][0-9]*$'
+    printf '%s' "$1" | grep -Eq '^[0-9]{4}\.([1-9]|[1-4][0-9]|5[0-3])\.[1-9][0-9]*$'
 }
 
 # Reading refs is harmless, but a dry run must not even update them.
@@ -116,7 +117,7 @@ if [ "$MODE" = tag ]; then
 fi
 
 YEAR=$(date -u +%G)
-WEEK=$(date -u +%V)
+WEEK=$((10#$(date -u +%V)))
 LATEST_TAG=$(git tag -l "v${YEAR}.${WEEK}.*" --sort=-v:refname | head -n 1 || true)
 if [ -z "$LATEST_TAG" ]; then
     BUILD=1
