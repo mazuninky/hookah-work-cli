@@ -64,6 +64,7 @@ Pre-commit — `lefthook.yml` (fmt, clippy, test, guard на `.claude/`); обх
 
 - Всё в `master` — через PR; **никогда не мержить без явного одобрения пользователя**, не обходить
   branch protection (`--admin`).
-- Версия — календарная `YYYY.WW.BUILD`, только через `scripts/bump-version.sh`; релиз по тегу
-  `vYYYY.WW.BUILD` ([`docs/releasing.md`](docs/releasing.md)).
+- Версия — календарная `YYYY.WW.BUILD`, только через `scripts/bump-version.sh`: он открывает PR
+  `release: vX`, после squash-мержа `--tag` ставит тег `vX` на его коммит в `master`, тег запускает
+  релиз. Номер не переиспользуется, теги не удаляются ([`docs/releasing.md`](docs/releasing.md)).
 - GitHub Actions пинятся по commit SHA с `# vX` комментарием.
