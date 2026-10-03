@@ -23,28 +23,42 @@ multi-profile config.
 
 ## Installation
 
-### From GitHub Releases with attestation verification (recommended)
+Prebuilt binaries for Linux (x86_64), macOS (Apple Silicon) and Windows (x86_64) are attached to
+every [GitHub Release](https://github.com/mazuninky/hookah-work-cli/releases). Versions are
+calendar-based: `YYYY.WW.BUILD` (year, ISO week, build), e.g. `2026.40.1`.
 
-Release archives are built by this repo's `release.yml` and carry [SLSA build provenance](https://slsa.dev/):
+### Install script (Linux, macOS)
+
+[`scripts/install.sh`](scripts/install.sh) downloads a release, verifies its SHA-256 checksum and
+installs `hw` into `/usr/local/bin`:
 
 ```sh
-gh release download --repo mazuninky/hookah-work-cli --pattern 'hw-*-x86_64-unknown-linux-gnu.tar.gz'
-gh attestation verify hw-*-x86_64-unknown-linux-gnu.tar.gz --repo mazuninky/hookah-work-cli
-tar -xzf hw-*-x86_64-unknown-linux-gnu.tar.gz
+# Latest release
+curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh | sh
+
+# A specific version, into a directory you own (no sudo)
+curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh \
+  | sh -s -- --version 2026.40.1 --install-dir ~/.local/bin
+```
+
+Review the script before piping it into `sh` if you don't trust the source.
+
+### From GitHub Releases with attestation verification
+
+Release archives carry [SLSA build provenance](https://slsa.dev/), so you can check that an archive
+was built by this repo's release workflow before installing it. On macOS (Apple Silicon):
+
+```sh
+gh release download --repo mazuninky/hookah-work-cli --pattern 'hw-*-aarch64-apple-darwin.tar.gz'
+gh attestation verify hw-*-aarch64-apple-darwin.tar.gz --repo mazuninky/hookah-work-cli
+tar -xzf hw-*-aarch64-apple-darwin.tar.gz
 sudo install -m 0755 hw-*/hw /usr/local/bin/hw
 ```
 
-Prebuilt artifacts: Linux (x86_64), macOS (arm64), Windows (x86_64).
-
-### Install script
-
-[`scripts/install.sh`](scripts/install.sh) downloads a release, verifies its checksum and installs it
-(default `/usr/local/bin`, override with `--install-dir`). Review it or pin a version before piping
-it into `sh`:
-
-```sh
-curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/scripts/install.sh | sh -s -- --version <YYYY.WW.BUILD>
-```
+On Linux use the pattern `hw-*-x86_64-unknown-linux-gnu.tar.gz`. On Windows download
+`hw-*-x86_64-pc-windows-msvc.zip` (`gh release download --pattern '*windows*'`), verify it the same
+way and put `hw.exe` on your `PATH`. Every archive also contains the man pages and shell
+completions.
 
 ### From source
 
