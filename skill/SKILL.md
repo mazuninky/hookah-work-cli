@@ -45,6 +45,9 @@ confusing expenses with purchases), not from wrong flags.
   `hw auth login` in their own terminal — it is interactive, with masked input. Never run it yourself
   and never ask for a key or password in the chat. If they paste one anyway, don't use it and suggest
   regenerating it at `https://<crm>.hookah.work/v2/settings/users`.
+- **Don't run `hw self update` on your own.** It downloads a release and replaces the `hw` binary.
+  Run it only when the user explicitly asks to update `hw`; `hw self check` (read-only) is fine to
+  answer "is there a newer version?".
 - **Read-only.** `hw` has no write commands and `hw api` sends only GET. If the user wants to create
   or change bookings, sales, clients or products, say that `hw` can't, and point them to the CRM web
   interface. Don't work around it with `curl` or other tools.

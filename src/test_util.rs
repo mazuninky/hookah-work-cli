@@ -1,11 +1,14 @@
 //! Hand-written test doubles for unit tests and, through the `test-util` feature,
-//! integration tests: a scripted [`FakeApi`], [`FakeConnector`], [`FakeIssuer`] and
-//! [`RecordingSleeper`].
+//! integration tests: a scripted [`FakeApi`], [`FakeConnector`], [`FakeIssuer`],
+//! [`RecordingSleeper`], [`FakeReleases`] and [`FakeInstaller`], plus in-memory release
+//! archives ([`release_archive`]).
 
 use std::collections::{HashMap, VecDeque};
+use std::io::{Cursor, Write as _};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use serde_json::Value;
 
 use crate::auth::Secret;
@@ -14,6 +17,7 @@ use crate::client::{
     error_for_status,
 };
 use crate::error::{Error, Result};
+use crate::update::{ArchiveKind, Installer, ReleaseSource, Target, Version, sha256_hex};
 
 /// Which [`Api`] method a call went through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -284,6 +288,192 @@ impl Sleeper for RecordingSleeper {
     }
 }
 
+/// Scripted [`ReleaseSource`]: an optional latest version and assets per `(version, name)`.
+/// Records every call as `latest` or `download v<version>/<name>`; anything unscripted is
+/// [`Error::NotFound`].
+#[derive(Debug, Default)]
+pub struct FakeReleases {
+    latest: Option<Version>,
+    assets: HashMap<String, Vec<u8>>,
+    calls: Mutex<Vec<String>>,
+}
+
+impl FakeReleases {
+    /// Releases whose latest is `latest` (and no assets yet); `default()` has no release at all.
+    #[must_use]
+    pub fn new(latest: Version) -> Self {
+        Self {
+            latest: Some(latest),
+            ..Self::default()
+        }
+    }
+
+    /// Publishes asset `name` of release `version`.
+    #[must_use]
+    pub fn with_asset(mut self, version: &Version, name: &str, bytes: impl Into<Vec<u8>>) -> Self {
+        self.assets.insert(asset_key(version, name), bytes.into());
+        self
+    }
+
+    /// Publishes `binary` as release `version` for `target`: the archive and a matching
+    /// `.sha256` sidecar, as the release workflow does.
+    #[must_use]
+    pub fn with_release(self, version: &Version, target: Target, binary: &[u8]) -> Self {
+        let archive = release_archive(version, target, binary);
+        let asset = target.asset_name(version);
+        let sidecar = format!("{}  {asset}\n", sha256_hex(&archive));
+        self.with_asset(version, &asset, archive).with_asset(
+            version,
+            &target.checksum_name(version),
+            sidecar,
+        )
+    }
+
+    /// Every call so far.
+    #[must_use]
+    pub fn calls(&self) -> Vec<String> {
+        lock(&self.calls).clone()
+    }
+}
+
+fn asset_key(version: &Version, name: &str) -> String {
+    format!("v{version}/{name}")
+}
+
+impl ReleaseSource for FakeReleases {
+    fn latest(&self) -> Result<Version> {
+        lock(&self.calls).push("latest".to_owned());
+        self.latest
+            .ok_or_else(|| Error::NotFound("FakeReleases has no release".into()))
+    }
+
+    fn download(&self, version: &Version, name: &str) -> Result<Vec<u8>> {
+        let key = asset_key(version, name);
+        lock(&self.calls).push(format!("download {key}"));
+        self.assets
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| Error::NotFound(format!("FakeReleases has no {key}")))
+    }
+}
+
+/// Scripted [`Installer`]: `locate` answers a fixed path (or refuses with
+/// [`Error::SelfUpdate`]), `replace` records what it was given and touches nothing.
+#[derive(Debug)]
+pub struct FakeInstaller {
+    path: Utf8PathBuf,
+    refusal: Option<String>,
+    located: Mutex<usize>,
+    replaced: Mutex<Vec<(Utf8PathBuf, Vec<u8>)>>,
+}
+
+impl FakeInstaller {
+    /// An installer whose executable is `path`.
+    #[must_use]
+    pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
+        Self {
+            path: path.into(),
+            refusal: None,
+            located: Mutex::default(),
+            replaced: Mutex::default(),
+        }
+    }
+
+    /// An installer whose `locate` fails with `message`.
+    #[must_use]
+    pub fn refusing(message: &str) -> Self {
+        Self {
+            refusal: Some(message.to_owned()),
+            ..Self::default()
+        }
+    }
+
+    /// How many times `locate` ran.
+    #[must_use]
+    pub fn located(&self) -> usize {
+        *lock(&self.located)
+    }
+
+    /// Every `(exe, binary)` passed to `replace`.
+    #[must_use]
+    pub fn replaced(&self) -> Vec<(Utf8PathBuf, Vec<u8>)> {
+        lock(&self.replaced).clone()
+    }
+}
+
+impl Default for FakeInstaller {
+    fn default() -> Self {
+        Self::new("/home/user/.local/bin/hw")
+    }
+}
+
+impl Installer for FakeInstaller {
+    fn locate(&self) -> Result<Utf8PathBuf> {
+        *lock(&self.located) += 1;
+        match &self.refusal {
+            Some(message) => Err(Error::SelfUpdate(message.clone())),
+            None => Ok(self.path.clone()),
+        }
+    }
+
+    fn replace(&self, exe: &Utf8Path, binary: &[u8]) -> Result<()> {
+        lock(&self.replaced).push((exe.to_owned(), binary.to_vec()));
+        Ok(())
+    }
+}
+
+/// A release archive packed like the release workflow does: `hw-<version>-<triple>/` holding
+/// the executable and a `LICENSE`.
+#[must_use]
+pub fn release_archive(version: &Version, target: Target, binary: &[u8]) -> Vec<u8> {
+    let binary_path = target.binary_path(version);
+    let license = binary_path.replace(target.binary, "LICENSE");
+    let entries = [
+        (license.as_str(), b"MIT".as_slice()),
+        (binary_path.as_str(), binary),
+    ];
+    match target.archive {
+        ArchiveKind::TarGz => tar_gz_archive(&entries),
+        ArchiveKind::Zip => zip_archive(&entries),
+    }
+}
+
+/// A gzipped tarball of regular files (mode 0755). Names are stored verbatim (`./` prefixes
+/// included), so they must fit the 100-byte tar name field.
+#[must_use]
+pub fn tar_gz_archive(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    let mut builder = tar::Builder::new(encoder);
+    for (name, data) in entries {
+        let mut header = tar::Header::new_ustar();
+        let field = &mut header.as_old_mut().name;
+        assert!(name.len() <= field.len(), "tar name too long: {name}");
+        field[..name.len()].copy_from_slice(name.as_bytes());
+        header.set_entry_type(tar::EntryType::Regular);
+        header.set_mode(0o755);
+        header.set_size(data.len() as u64);
+        header.set_cksum();
+        builder.append(&header, *data).expect("append to tar");
+    }
+    builder
+        .into_inner()
+        .and_then(flate2::write::GzEncoder::finish)
+        .expect("finish tar.gz")
+}
+
+/// A deflate-compressed zip of files; names are stored verbatim, backslash separators included.
+#[must_use]
+pub fn zip_archive(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    for (name, data) in entries {
+        zip.start_file(*name, options).expect("start zip entry");
+        zip.write_all(data).expect("write zip entry");
+    }
+    zip.finish().expect("finish zip").into_inner()
+}
+
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
@@ -310,6 +500,46 @@ mod tests {
     fn fake_api_maps_status_like_the_client() {
         let api = FakeApi::new().with_status("/api/x", 403, r#"{"message":"Нет доступа"}"#);
         assert!(matches!(api.get("/api/x", &[]), Err(Error::Auth(m)) if m == "Нет доступа"));
+    }
+
+    #[test]
+    fn fake_releases_serve_scripted_assets_and_record_calls() {
+        let version = Version::new(2026, 41, 1);
+        let releases = FakeReleases::new(version).with_asset(&version, "a.zip", b"zip".as_slice());
+        assert_eq!(releases.latest().unwrap(), version);
+        assert_eq!(releases.download(&version, "a.zip").unwrap(), b"zip");
+        assert!(matches!(
+            releases.download(&version, "b.zip"),
+            Err(Error::NotFound(_))
+        ));
+        assert_eq!(
+            releases.calls(),
+            [
+                "latest",
+                "download v2026.41.1/a.zip",
+                "download v2026.41.1/b.zip"
+            ]
+        );
+        assert!(matches!(
+            FakeReleases::default().latest(),
+            Err(Error::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn fake_installer_records_and_refuses() {
+        let installer = FakeInstaller::new("/x/hw");
+        let exe = installer.locate().unwrap();
+        installer.replace(&exe, b"bin").unwrap();
+        assert_eq!(installer.located(), 1);
+        assert_eq!(
+            installer.replaced(),
+            [(Utf8PathBuf::from("/x/hw"), b"bin".to_vec())]
+        );
+        assert!(matches!(
+            FakeInstaller::refusing("no").locate(),
+            Err(Error::SelfUpdate(m)) if m == "no"
+        ));
     }
 
     #[test]

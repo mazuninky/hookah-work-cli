@@ -14,6 +14,7 @@ pub mod product;
 pub mod reference;
 pub mod report;
 pub mod sale;
+pub mod self_update;
 pub mod storage;
 
 use serde_json::Value;

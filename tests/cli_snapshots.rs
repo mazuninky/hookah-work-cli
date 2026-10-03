@@ -59,6 +59,18 @@ fn auth_login_help() {
 }
 
 #[test]
+fn self_update_help() {
+    let help = stdout(
+        &mut help_cmd(&TestEnv::new()),
+        &["self", "update", "--help"],
+    );
+    assert!(help.contains("SHA-256 checksum"), "{help}");
+    insta::with_settings!({ filters => help_filters() }, {
+        insta::assert_snapshot!(help);
+    });
+}
+
+#[test]
 fn client_find_json() {
     let server = MockServer::start();
     server.mock(|when, then| {

@@ -43,8 +43,8 @@ curl -sSfL https://raw.githubusercontent.com/mazuninky/hookah-work-cli/master/sc
   | sh -s -- --version 2026.40.1 --install-dir ~/bin
 ```
 
-Run the same command again to upgrade. Review the script before piping it into `sh` if you don't
-trust the source.
+Later updates: `hw self update` (see [Updating](#updating)), or run the same command again. Review
+the script before piping it into `sh` if you don't trust the source.
 
 ### From GitHub Releases with attestation verification
 
@@ -73,6 +73,22 @@ cd hookah-work-cli
 cargo install --path . --root ~/.local --force
 codesign -s - -f ~/.local/bin/hw   # macOS only: lets the binary use the login keychain
 ```
+
+### Updating
+
+```sh
+hw self check                                   # current vs latest release
+hw self update                                  # install the latest release in place
+hw self update --to 2026.42.1                   # a specific version
+hw self update --to 2026.41.1 --allow-downgrade # roll back to an older one
+```
+
+`hw self update` downloads the release archive for your platform from GitHub, verifies its SHA-256
+checksum, and replaces the running binary (re-signing it ad hoc on macOS). It refuses to touch
+binaries managed by a package manager (Homebrew, Nix) or system directories — update those through
+their package manager. It only talks to github.com and never sends your CRM token there.
+
+`2026.40.1` predates `hw self`: after rolling back to it, update again with the install script.
 
 ## Quick start
 
@@ -118,6 +134,7 @@ Run `hw --help` or `hw <command> --help` for every flag; the full reference is
 | `hw menu` | Public electronic menu |
 | `hw api <path>` | Any GET endpoint |
 | `hw auth`, `hw config` | Login/token and profile management |
+| `hw self check\|update` | Check for and install a newer `hw` release (GitHub, not the CRM) |
 
 ### Dates and the business day
 

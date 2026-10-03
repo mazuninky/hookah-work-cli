@@ -44,6 +44,11 @@ pub enum Error {
     #[error("keyring error: {0}")]
     Keyring(String),
 
+    /// `hw self` could not check for or install a release: GitHub refused the request, the
+    /// checksum or the archive is wrong, or the platform or install location is unsupported (exit 1).
+    #[error("self-update error: {0}")]
+    SelfUpdate(String),
+
     /// `--jq` or `--template` failed while running (syntax errors are [`Error::InvalidInput`]) (exit 1).
     #[error("output transform error: {0}")]
     Transform(String),
@@ -111,6 +116,7 @@ impl Error {
             | Error::Http(_)
             | Error::InvalidResponse(_)
             | Error::Keyring(_)
+            | Error::SelfUpdate(_)
             | Error::Transform(_)
             | Error::Render(_)
             | Error::Io(_)
@@ -179,6 +185,7 @@ mod tests {
             Error::Http(ureq::Error::ConnectionFailed),
             Error::InvalidResponse("x".into()),
             Error::Keyring("x".into()),
+            Error::SelfUpdate("x".into()),
             Error::Transform("x".into()),
             Error::Render("x".into()),
             Error::Io(std::io::Error::other("x")),

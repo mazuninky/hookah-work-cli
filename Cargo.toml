@@ -61,9 +61,20 @@ jaq-std = "3"
 jaq-json = { version = "2", features = ["serde"] }
 minijinja = { version = "2", default-features = false, features = ["builtins", "serde"] }
 
+# `hw self update`: checksum, unpacking the release archive (in memory), staging next to the binary
+sha2 = { version = "0.11", default-features = false }
+flate2 = "1"
+tar = { version = "0.4", default-features = false }
+zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
+tempfile = "3"
+
 [target.'cfg(unix)'.dependencies]
 # Restores the default SIGPIPE disposition so `hw ... | head` exits cleanly.
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# A running .exe cannot be renamed over on Windows; self-replace moves it aside first.
+self-replace = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", default-features = false, features = ["keychain"] }
@@ -79,7 +90,6 @@ linux-keyutils-keyring-store = "1"
 hw = { path = ".", features = ["test-util"] }
 assert_cmd = "2"
 predicates = "3"
-tempfile = "3"
 httpmock = "0.8"
 pretty_assertions = "1"
 insta = { version = "1", features = ["json", "filters"] }

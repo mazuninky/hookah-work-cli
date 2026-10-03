@@ -202,6 +202,9 @@ const CASES: &[Case] = &[
     case("config delete", &["test"], &[]),
     case("config path", &[], &[]),
     case("completions", &["bash"], &[]),
+    // `hw self` talks to GitHub (a fake here), never to the CRM.
+    case("self check", &[], &[]),
+    case("self update", &[], &[]),
     case("generate-docs", &["--output-dir", "{dir}"], &[]),
 ];
 

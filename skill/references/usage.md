@@ -16,8 +16,9 @@ reference is `commands.md`.
 7. [`--expand`](#--expand)
 8. [Command guide](#command-guide)
 9. [Generic GET: `hw api`](#generic-get-hw-api)
-10. [Errors, exit codes, retries](#errors-exit-codes-retries)
-11. [Scripting and CI](#scripting-and-ci)
+10. [Updating `hw`](#updating-hw)
+11. [Errors, exit codes, retries](#errors-exit-codes-retries)
+12. [Scripting and CI](#scripting-and-ci)
 
 ---
 
@@ -288,6 +289,19 @@ hw --crm demo api menu --no-auth
 
 `PATH` accepts `tables`, `api/tables` or `/api/tables`, with an optional `?query`. A non-JSON body is
 printed as text. Prefer the dedicated commands: they validate flags and resolve business-day dates.
+
+## Updating `hw`
+
+```bash
+hw -F toon self check                            # {current, latest, update_available, release_url}
+hw self update                                   # ONLY when the user asked to update hw
+hw self update --to 2026.41.1 --allow-downgrade  # pin or roll back (older than the current needs the flag)
+```
+
+`self update` downloads the platform's release archive from GitHub, verifies its SHA-256 checksum
+and replaces the running binary; it refuses binaries managed by Homebrew/Nix or in system
+directories. It needs no config or token and never contacts the CRM. Versions are `YYYY.WW.BUILD`
+(year, ISO week without a leading zero, build).
 
 ## Errors, exit codes, retries
 
