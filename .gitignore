@@ -1,0 +1,16 @@
+/target
+**/*.rs.bk
+*.pending-snap
+/dist
+
+# Локальная обвязка Claude Code (агенты, конвенции, правила, память) не версионируется;
+# в репозитории живут только общие permissions.
+/.claude/*
+!/.claude/settings.json
+
+.DS_Store
+.idea/
+.vscode/
+
+# Local lefthook overrides (private checks that must not live in the repo).
+lefthook-local.yml
