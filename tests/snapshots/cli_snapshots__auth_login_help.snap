@@ -1,0 +1,105 @@
+---
+source: tests/cli_snapshots.rs
+expression: help
+---
+Store an API token for a CRM and make it usable by every other command.
+
+On a terminal, hw asks for the CRM (unless --crm, HW_CRM or the profile names it), then
+for an API key or for an email and password, and last where to save the token (unless
+--storage is given). A CRM director generates the API key at
+https://<crm>.hookah.work/v2/settings/users (hw prints the exact address).
+
+Scripts and CI pass a flag and pipe the secret on stdin, never on the command line:
+  --with-token                  one line of stdin is the API key
+  --email E --password-stdin    one line of stdin is the password of CRM user E;
+                                hw exchanges it for the token via POST /api/login
+Without a flag and without a terminal (stdin and stderr), login fails with exit 5.
+
+The token is checked with GET /api/settings before it is saved where --storage says.
+Without --storage, a terminal login asks (preselecting the profile's current storage);
+otherwise an existing profile keeps its storage and a new one uses the config file
+(api_token, 0600 permissions). Saving to one place removes the profile's token from the
+other.
+
+The profile name is --profile; without --crm, the default (or only) existing profile;
+otherwise the CRM's first host label (demo for demo.hookah.work).
+
+Usage: hw auth login [OPTIONS]
+
+Options:
+      --with-token
+          Read the API token from the first line of stdin instead of prompting
+
+      --email <EMAIL>
+          Email of the CRM user to log in as (with --password-stdin)
+
+      --password-stdin
+          Read the password from the first line of stdin instead of prompting (with --email)
+
+      --storage <STORAGE>
+          Where to save the token [default: the profile's storage, else config; a terminal login asks]
+
+          Possible values:
+          - config:  The `api_token` field of the config file (written with 0600 permissions)
+          - keyring: The OS keyring (Keychain, Credential Manager, keyutils)
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Global Options:
+  -v, --verbose...
+          Increase logging verbosity (-v, -vv, -vvv); logs go to stderr
+
+  -q, --quiet
+          Print only errors to stderr: no hints, no warnings
+
+      --config <PATH>
+          Configuration file [default: $XDG_CONFIG_HOME/hw/config.toml or ~/.config/hw/config.toml]
+          
+          [env: HW_CONFIG=]
+
+  -p, --profile <NAME>
+          Profile from the configuration file to use
+          
+          [env: HW_PROFILE=]
+
+      --crm <CRM>
+          CRM to talk to: subdomain (demo), host (demo.hookah.work) or base URL
+          
+          [env: HW_CRM=]
+
+  -F, --format <FORMAT>
+          Output format
+
+          Possible values:
+          - console: Tables and `key: value` lines for people
+          - json:    Pretty-printed JSON
+          - toon:    TOON, a compact JSON encoding for LLMs
+          - toml:    TOML (a top-level list is wrapped as `items`)
+          - csv:     CSV with a header row
+          
+          [default: console]
+
+      --no-color
+          Disable colored output (NO_COLOR is honoured too)
+
+      --no-pager
+          Do not page console output (also HW_NO_PAGER=1)
+
+      --jq <EXPR>
+          Filter the JSON result with a jq expression before formatting
+
+      --template <TPL>
+          Render the result with a minijinja template instead of --format
+
+      --retries <N>
+          Retries for rate limiting (429), server errors (5xx) and network failures; 0 disables
+          
+          [default: 3]
+
+Examples:
+  hw auth login
+  hw auth login --crm demo --storage keyring
+  echo "$TOKEN" | hw auth login --crm demo --with-token
+  printf '%s\n' "$PASSWORD" | hw auth login --crm demo --email api@example.com --password-stdin
+  hw auth login --crm demo --with-token --storage keyring < token.txt

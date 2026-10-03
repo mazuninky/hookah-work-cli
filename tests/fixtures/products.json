@@ -1,0 +1,29 @@
+[
+  {
+    "id": 172,
+    "category_id": 21,
+    "name": "Adrenaline rush 0,5л",
+    "code": "RSH",
+    "price": 100,
+    "cost": 40,
+    "stock": 0
+  },
+  {
+    "id": 83,
+    "category_id": 21,
+    "name": "AriZona tea 340мл",
+    "code": "AZN",
+    "price": null,
+    "cost": null,
+    "stock": null
+  },
+  {
+    "id": 80,
+    "category_id": 26,
+    "name": "Carbopol 35mm",
+    "code": "",
+    "price": null,
+    "cost": null,
+    "stock": null
+  }
+]

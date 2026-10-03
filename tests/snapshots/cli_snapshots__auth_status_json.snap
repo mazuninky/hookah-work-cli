@@ -1,0 +1,10 @@
+---
+source: tests/cli_snapshots.rs
+expression: out
+---
+{
+  "profile": null,
+  "crm": "http://127.0.0.1:[PORT]",
+  "token_source": "env",
+  "token_status": "valid"
+}

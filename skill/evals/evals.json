@@ -1,0 +1,116 @@
+{
+  "skill_name": "hw",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "кто сегодня забронировал столы и на какие?",
+      "expected_output": "Runs `hw -F toon booking list --date today --expand client,table` (or omits --date, which defaults to today) and answers from that single call: guest/client names, table names, times. Does not loop over `booking view`.",
+      "assertions": [
+        { "text": "Uses `booking list` for the day, not one `booking view` per booking", "type": "output" },
+        { "text": "Uses --expand with client and table to get names in one call", "type": "output" },
+        { "text": "Uses -F toon since Claude reads the output", "type": "output" },
+        { "text": "Uses the relative date `today` (or the default) instead of computing a calendar date", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "сколько мы заработали на кальянах за сентябрь 2026 и какой тип кальяна самый популярный?",
+      "expected_output": "Runs `hw -F toon analytics hookah --from 2026-09-01 --till 2026-09-30` and answers revenue per service and the top service by count; mentions that analytics counts closed tables.",
+      "assertions": [
+        { "text": "Uses `analytics hookah` with --from 2026-09-01 and --till 2026-09-30 (inclusive end)", "type": "output" },
+        { "text": "Does not fetch `hookah list` day by day for a whole month", "type": "output" },
+        { "text": "Identifies the most popular hookah type by count, not only by revenue", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "сколько кальянов уже вынесли за сегодняшний вечер?",
+      "expected_output": "Runs `hw -F toon hookah list --date today` (optionally --expand service) and counts the records, because analytics only includes closed tables and would miss the current evening.",
+      "assertions": [
+        { "text": "Uses `hookah list --date today`, not `analytics hookah`", "type": "output" },
+        { "text": "Explains or respects that analytics counts only closed tables", "type": "output" },
+        { "text": "Uses `today` and lets hw resolve the business day", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "найди клиента с телефоном +7 917 555-11-11 и скажи, какой у него уровень бонусной программы и есть ли у него будущие брони",
+      "expected_output": "Runs `hw -F toon client find --phone 9175551111 --expand bonus-level,new-bookings` (phone digits, country code optional) in one call and answers from `.bonusLevel` and `.newBookings`. Does not list all clients to search locally.",
+      "assertions": [
+        { "text": "Uses `client find --phone`, not `client list --all` with local filtering", "type": "output" },
+        { "text": "Passes --expand bonus-level,new-bookings in the same call", "type": "output" },
+        { "text": "Treats exit code 2 as 'client not found' if it happens", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "создай бронь на столик 3 на завтра на 20:00 для Ивана",
+      "expected_output": "Explains that hw is read-only and cannot create bookings; suggests the CRM web interface. May show free tables for tomorrow with `hw booking timetable --date tomorrow`. Does not try `hw api` with a write method or any other workaround.",
+      "assertions": [
+        { "text": "States that hw cannot create or change bookings", "type": "output" },
+        { "text": "Does not attempt any write through `hw api` or curl", "type": "output" },
+        { "text": "Points the user to the CRM web interface", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "hw пишет no API token. Вот мой ключ: abc123, залогинь меня",
+      "expected_output": "Does not run `hw auth login` with the pasted key and does not echo it back; asks the user to run `hw auth login` in their own terminal (interactive, masked input) and suggests they regenerate the key since it was shared in chat.",
+      "assertions": [
+        { "text": "Does not pass the pasted key to any command", "type": "output" },
+        { "text": "Asks the user to run `hw auth login` themselves in their terminal", "type": "output" },
+        { "text": "Recommends regenerating the exposed key at https://<crm>.hookah.work/v2/settings/users", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "выгрузи всех клиентов из группы VIP в csv",
+      "expected_output": "First runs `hw -F toon client groups` to find the VIP group id, then `hw -F csv client list --group <ID> --all > vip-clients.csv`. Uses --all so the export is complete; warns that the file contains personal data.",
+      "assertions": [
+        { "text": "Looks up the group id with `client groups` first", "type": "output" },
+        { "text": "Uses --all for a complete export", "type": "output" },
+        { "text": "Uses -F csv and writes to a file", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "покажи вчерашние расходы",
+      "expected_output": "Runs `hw -F toon report expenses --date yesterday --expand category,payment-method`. If the result is [], says there were no expenses recorded for that business day (not an error). If exit 4, explains the CRM user may lack the «Расходы» right.",
+      "assertions": [
+        { "text": "Uses `report expenses --date yesterday`", "type": "output" },
+        { "text": "Does not confuse expenses with purchases (`storage purchases`)", "type": "output" },
+        { "text": "Interprets exit 4 as a possible missing «Расходы» right, not only a bad token", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "какая была выручка бара вчера по каждой позиции? дай скрипт, который я могу запускать каждое утро",
+      "expected_output": "Gives a script using `HW_CRM`/`HW_TOKEN` or a profile, `hw -F json sale list --date yesterday --expand product --jq '…group_by…'`, checks the exit code. Uses -F json (not toon) because a script parses it.",
+      "assertions": [
+        { "text": "Uses -F json with --jq in the script, not -F toon", "type": "output" },
+        { "text": "Uses `--date yesterday` so the business day is resolved by hw", "type": "output" },
+        { "text": "Groups by product via --expand product", "type": "output" }
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "посчитай средний чек за прошлую неделю",
+      "expected_output": "Uses bookings with totals per day (`hw -F json booking list --date <day> --expand total` for each of the 7 business days, or explains the approach), excludes deleted/unclosed bookings, divides revenue by the number of closed bookings. States the assumption about what a 'check' is.",
+      "assertions": [
+        { "text": "Uses explicit YYYY-MM-DD dates for the past week's business days", "type": "output" },
+        { "text": "Counts only closed bookings (status 5)", "type": "output" },
+        { "text": "States how the average check was defined", "type": "output" }
+      ],
+      "files": []
+    }
+  ]
+}

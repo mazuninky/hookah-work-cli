@@ -1,0 +1,95 @@
+---
+source: tests/cli_snapshots.rs
+assertion_line: 37
+expression: help
+---
+Read-only command-line client for the HookahWork CRM API.
+
+hw only reads: every command is a GET request, plus the two non-mutating POSTs the API
+needs for logging in and for searching a client. Nothing in the CRM is created, changed
+or deleted.
+
+Usage: hw [OPTIONS] <COMMAND>
+
+Commands:
+  ref          Reference data: settings, tables, payment methods, employees, services, bonus levels
+  product      Products and product categories
+  storage      Storages and purchases
+  client       Clients: list, groups, visit history, lookup
+  booking      Bookings: daily list, timetable, single booking, device bookings
+  sale         Sales at tables or over a business day
+  hookah       Hookahs served at tables or over a business day
+  report       Daily reports: expenses, credits, bonus points
+  analytics    Period summaries of hookahs and sales
+  menu         Public electronic menu (works without a token)
+  api          Send a raw GET request to any API path
+  auth         Log in and manage the stored API token
+  config       Inspect and manage configuration profiles
+  completions  Print a shell completion script
+  help         Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Global Options:
+  -v, --verbose...
+          Increase logging verbosity (-v, -vv, -vvv); logs go to stderr
+
+  -q, --quiet
+          Print only errors to stderr: no hints, no warnings
+
+      --config <PATH>
+          Configuration file [default: $XDG_CONFIG_HOME/hw/config.toml or ~/.config/hw/config.toml]
+          
+          [env: HW_CONFIG=]
+
+  -p, --profile <NAME>
+          Profile from the configuration file to use
+          
+          [env: HW_PROFILE=]
+
+      --crm <CRM>
+          CRM to talk to: subdomain (demo), host (demo.hookah.work) or base URL
+          
+          [env: HW_CRM=]
+
+  -F, --format <FORMAT>
+          Output format
+
+          Possible values:
+          - console: Tables and `key: value` lines for people
+          - json:    Pretty-printed JSON
+          - toon:    TOON, a compact JSON encoding for LLMs
+          - toml:    TOML (a top-level list is wrapped as `items`)
+          - csv:     CSV with a header row
+          
+          [default: console]
+
+      --no-color
+          Disable colored output (NO_COLOR is honoured too)
+
+      --no-pager
+          Do not page console output (also HW_NO_PAGER=1)
+
+      --jq <EXPR>
+          Filter the JSON result with a jq expression before formatting
+
+      --template <TPL>
+          Render the result with a minijinja template instead of --format
+
+      --retries <N>
+          Retries for rate limiting (429), server errors (5xx) and network failures; 0 disables
+          
+          [default: 3]
+
+Getting started:
+  hw auth login
+  hw booking list --date today
+  hw product list --search чай -F json
+
+Exit codes: 0 ok, 1 runtime/API/network error, 2 not found, 3 configuration error,
+4 authentication error, 5 invalid input.

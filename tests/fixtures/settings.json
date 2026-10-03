@@ -1,0 +1,8 @@
+{
+  "interval": "30",
+  "midnight": "6",
+  "open": "9",
+  "close": "26",
+  "timezone": "Asia/Yekaterinburg",
+  "countdown": "10"
+}
