@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn verify_rejects_mismatch_naming_both_digests() {
-        let err = verify_sha256(b"abd", ABC, ASSET).unwrap_err();
+        let err = verify_sha256(b"xyz", ABC, ASSET).unwrap_err();
         let message = err.to_string();
         assert!(matches!(err, Error::SelfUpdate(_)));
         assert!(
@@ -204,7 +204,7 @@ mod tests {
             "{message}"
         );
         assert!(
-            message.contains(ABC) && message.contains(&sha256_hex(b"abd")),
+            message.contains(ABC) && message.contains(&sha256_hex(b"xyz")),
             "{message}"
         );
     }
