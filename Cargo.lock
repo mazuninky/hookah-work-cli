@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "hw"
-version = "2026.40.1"
+version = "2026.40.2"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
