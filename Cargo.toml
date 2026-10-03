@@ -29,7 +29,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["a
 
 # HTTP (sync; default features bring rustls + gzip)
 ureq = { version = "3", features = ["json"] }
-base64 = "0.22"
+base64 = { version = "0.23", default-features = false, features = ["std"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -43,7 +43,7 @@ keyring-core = "1"
 inquire = { version = "0.9", default-features = false, features = ["crossterm"] }
 
 # Config
-dirs = "6"
+dirs = "7"
 
 # Dates and CRM time zones
 jiff = "0.2"
@@ -52,7 +52,7 @@ jiff = "0.2"
 shlex = "2"
 
 # Output
-comfy-table = "7"
+comfy-table = "8"
 csv = "1"
 
 # --jq / --template post-processing
