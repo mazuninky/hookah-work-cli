@@ -1,6 +1,6 @@
 [package]
 name = "hw"
-version = "2026.40.0"
+version = "2026.40.1"
 edition = "2024"
 rust-version = "1.95"
 description = "Read-only command-line client for the HookahWork CRM API"
