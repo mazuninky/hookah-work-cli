@@ -11,13 +11,15 @@ use tracing::debug;
 
 use crate::auth::{InquirePrompter, Prompter, Secret, SecretStore, SystemKeyring, resolve_token};
 use crate::cli::args::{Cli, Command};
-use crate::cli::commands::{self, Outcome, Payload, auth::AuthContext};
+use crate::cli::commands::{self, Outcome, Payload, auth::AuthContext, self_update::SelfContext};
 use crate::client::{Api, Connector, HttpConnector, RetryPolicy, TokenIssuer};
 use crate::config::{
     ConfigLocation, ConfigStore as _, FileConfigStore, platform_default_config_path, resolve_crm,
 };
+use crate::error::Error;
 use crate::io::IoStreams;
 use crate::output::{self, Transforms};
+use crate::update::{GitHubReleases, Installer, ReleaseSource, SystemInstaller, Target, Version};
 
 /// The parts of the process environment `hw` reads, captured once so tests can inject them.
 #[derive(Debug, Clone, Default)]
@@ -57,12 +59,17 @@ pub struct Deps<'a> {
     pub env: &'a Env,
     /// "Now", for relative dates.
     pub now: Timestamp,
+    /// Published `hw` releases, for `hw self`.
+    pub releases: &'a dyn ReleaseSource,
+    /// Swaps the running executable, for `hw self update`.
+    pub installer: &'a dyn Installer,
 }
 
-/// Production entry point: real streams, keyring, HTTP and clock.
+/// Production entry point: real streams, keyring, HTTP, clock, GitHub releases and executable.
 pub fn run_system(cli: &Cli) -> anyhow::Result<()> {
     let mut io = IoStreams::system(cli.no_color, cli.no_pager);
     let http = HttpConnector::new(RetryPolicy::new(cli.retries));
+    let releases = GitHubReleases::new(RetryPolicy::new(cli.retries));
     let env = Env::from_process();
     let prompter = InquirePrompter::new(cli.no_color, std::env::var_os("NO_COLOR").is_some());
     let deps = Deps {
@@ -72,6 +79,8 @@ pub fn run_system(cli: &Cli) -> anyhow::Result<()> {
         prompter: &prompter,
         env: &env,
         now: Timestamp::now(),
+        releases: &releases,
+        installer: &SystemInstaller,
     };
     let result = run(cli, &mut io, &deps);
     io.stop_pager();
@@ -134,6 +143,21 @@ pub fn execute(cli: &Cli, io: &mut IoStreams, deps: &Deps<'_>) -> anyhow::Result
             let mut script = Vec::new();
             clap_complete::generate(args.shell, &mut Cli::command(), "hw", &mut script);
             Ok(Outcome::text(String::from_utf8_lossy(&script).into_owned()))
+        }
+        Command::SelfCmd(cmd) => {
+            let current = Version::current().map_err(|e| {
+                Error::SelfUpdate(format!(
+                    "this build's version {} is not a release version: {e}",
+                    env!("CARGO_PKG_VERSION")
+                ))
+            })?;
+            let ctx = SelfContext {
+                releases: deps.releases,
+                installer: deps.installer,
+                current,
+                target: Target::current(),
+            };
+            commands::self_update::run(cmd, &ctx)
         }
         Command::GenerateDocs(args) => commands::docs::run(args),
     }
@@ -228,7 +252,7 @@ mod tests {
     use super::*;
     use crate::auth::{InMemoryStore, MockPrompter, MockResponse};
     use crate::error::{Error, exit_code, exit_code_for_error};
-    use crate::test_util::{FakeApi, FakeConnector, FakeIssuer};
+    use crate::test_util::{FakeApi, FakeConnector, FakeInstaller, FakeIssuer, FakeReleases};
     use clap::FromArgMatches as _;
     use serde_json::json;
 
@@ -239,6 +263,8 @@ mod tests {
         connector: FakeConnector,
         issuer: FakeIssuer,
         prompter: MockPrompter,
+        releases: FakeReleases,
+        installer: FakeInstaller,
     }
 
     impl Harness {
@@ -255,6 +281,8 @@ mod tests {
                 connector: FakeConnector::new(api),
                 issuer: FakeIssuer::status(401, "{}"),
                 prompter: MockPrompter::default(),
+                releases: FakeReleases::new(Version::current().unwrap()),
+                installer: FakeInstaller::default(),
             }
         }
 
@@ -272,6 +300,8 @@ mod tests {
                 prompter: &self.prompter,
                 env: &self.env,
                 now: Timestamp::UNIX_EPOCH,
+                releases: &self.releases,
+                installer: &self.installer,
             };
             run(&cli, io, &deps)
         }
@@ -522,6 +552,30 @@ mod tests {
             .run(&["hw", "--crm", "demo", "api", "robots"], &mut io)
             .unwrap();
         assert_eq!(io.stdout_as_string(), body);
+    }
+
+    #[test]
+    fn self_commands_need_no_config_crm_or_token() {
+        let harness = Harness::new(FakeApi::new(), None);
+        let mut io = IoStreams::test();
+        harness
+            .run(&["hw", "-F", "json", "self", "check"], &mut io)
+            .unwrap();
+        let report: serde_json::Value = serde_json::from_str(&io.stdout_as_string()).unwrap();
+        assert_eq!(report["current"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(report["update_available"], false);
+
+        let mut io = IoStreams::test();
+        harness
+            .run(&["hw", "-F", "json", "self", "update"], &mut io)
+            .unwrap();
+        assert_eq!(
+            io.stderr_as_string(),
+            format!("hint: hw {} is up to date\n", env!("CARGO_PKG_VERSION"))
+        );
+        assert!(harness.connector.connections().is_empty());
+        assert_eq!(harness.releases.calls(), ["latest", "latest"]);
+        assert_eq!(harness.installer.located(), 0);
     }
 
     #[test]

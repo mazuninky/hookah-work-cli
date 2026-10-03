@@ -21,6 +21,8 @@ use hw::cli::Cli;
 use hw::client::{HttpConnector, NoSleep, RetryPolicy};
 use hw::error::exit_code_for_error;
 use hw::io::IoStreams;
+use hw::test_util::{FakeInstaller, FakeReleases};
+use hw::update::Version;
 
 /// Token handed to commands by [`App`] and by `HW_TOKEN` in binary tests.
 pub const TOKEN: &str = "tok-0123456789abcdef";
@@ -141,7 +143,9 @@ impl Ran {
 }
 
 /// `hw::app::run` with the production [`HttpConnector`] (no retries, no sleeping), an
-/// [`InMemoryStore`] keyring and a config file in a tempdir holding profile `test` → `base_url`.
+/// [`InMemoryStore`] keyring, a config file in a tempdir holding profile `test` → `base_url`,
+/// and for `hw self` a [`FakeReleases`] whose latest release is this build plus a
+/// [`FakeInstaller`] (nothing reaches GitHub, nothing is replaced).
 ///
 /// Every invocation passes `--config`, `--profile test` and `--crm` explicitly, so the
 /// `HW_CONFIG`/`HW_PROFILE`/`HW_CRM` clap reads from the test process cannot leak in.
@@ -153,6 +157,10 @@ pub struct App {
     connector: HttpConnector,
     env: Env,
     now: Timestamp,
+    /// Releases seen by `hw self`.
+    pub releases: FakeReleases,
+    /// Executable seen by `hw self update`.
+    pub installer: FakeInstaller,
 }
 
 impl App {
@@ -169,6 +177,8 @@ impl App {
                 default_config_path: None,
             },
             now: NOW.parse().expect("valid timestamp"),
+            releases: FakeReleases::new(Version::current().expect("release version")),
+            installer: FakeInstaller::default(),
         };
         std::fs::write(
             app.config_path(),
@@ -237,6 +247,8 @@ impl App {
             prompter,
             env: &self.env,
             now: self.now,
+            releases: &self.releases,
+            installer: &self.installer,
         };
         let result = hw::app::run(&cli, &mut io, &deps);
         Ran {

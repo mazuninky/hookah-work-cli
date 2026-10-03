@@ -23,6 +23,9 @@ Pre-commit — `lefthook.yml` (fmt, clippy, test, guard на `.claude/`); обх
   (токен по Basic auth) и `/api/client/find` (поиск). У клиента нет общего post/put/delete,
   `hw api` — GET-only без флага метода. Любой мутирующий запрос/эндпоинт — блокер, даже «по
   просьбе»; MCP-сервер CRM (`/api/mcp`) не используем.
+- **`hw self check|update` ходит только на github.com** (редирект `releases/latest` и ассеты
+  релиза, без API и без квоты), без `Authorization` и без токена CRM; архив сверяется с `.sha256`
+  до распаковки. К CRM не обращается — в `tests/read_only.rs` записан как «ноль запросов к CRM».
 - **Интерактив — только `hw auth login` на TTY** (решение пользователя, отступление от «non-interactive
   always»; как в atl): спрашивает CRM, способ входа и секрет маскированным вводом (`***`), показывает
   `<crm>/v2/settings/users` для генерации ключа. Вне TTY — только флаги, без промптов.
@@ -68,3 +71,5 @@ Pre-commit — `lefthook.yml` (fmt, clippy, test, guard на `.claude/`); обх
   `release: vX`, после squash-мержа `--tag` ставит тег `vX` на его коммит в `master`, тег запускает
   релиз. Номер не переиспользуется, теги не удаляются ([`docs/releasing.md`](docs/releasing.md)).
 - GitHub Actions пинятся по commit SHA с `# vX` комментарием.
+- CI на PR — только Linux; правки под `cfg(windows)`/`cfg(target_os = …)` (например `src/update/`)
+  до мержа гоняй полной матрицей: `gh workflow run ci.yml --ref <ветка> -f full_matrix=true`.

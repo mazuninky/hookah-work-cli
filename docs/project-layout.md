@@ -7,7 +7,8 @@ surface, secrets, exit codes) are in [`CLAUDE.md`](../CLAUDE.md); user docs in [
 
 ```
 main.rs ─ SIGPIPE reset → Cli::try_parse_from → logging → app::run_system
-app.rs  ─ run_system builds real deps (IoStreams, SystemKeyring, HttpConnector, Env, now)
+app.rs  ─ run_system builds real deps (IoStreams, SystemKeyring, HttpConnector, Env, now,
+          GitHubReleases, SystemInstaller)
           run → execute: resolve config/profile/CRM/token, connect, call the handler
                 render: Outcome → --jq/--template/--format → stdout; hints → stderr
 cli/commands/<group>.rs ─ handler: args + &dyn Api (+ now) → Outcome (pure, no I/O of its own)
@@ -26,14 +27,15 @@ Handlers never print, read config or build clients: they receive `&dyn Api` and 
 | `src/app.rs` | Composition root: `Env`, `Deps`, `run_system`, `run`, `execute` (dispatch), `render` |
 | `src/error.rs` | Domain `Error` (`thiserror`), `exit_code` constants, `exit_code_for_error` |
 | `src/cli/args/` | clap structs: global flags on `Cli` in `mod.rs`, one file per command group; `ValueEnum`s for `--expand`/`--type` with their API names |
-| `src/cli/commands/` | One handler module per command group, plus `api` (GET passthrough), `auth`, `config`, `menu`, `docs` (hidden `generate-docs`); `mod.rs` has `Outcome`/`Payload` and the shared `fetch` helper |
+| `src/cli/commands/` | One handler module per command group, plus `api` (GET passthrough), `auth`, `config`, `menu`, `self_update` (`hw self check`/`update` over `&dyn ReleaseSource` + `&dyn Installer`), `docs` (hidden `generate-docs`); `mod.rs` has `Outcome`/`Payload` and the shared `fetch` helper |
 | `src/client/` | `Api` / `Connector` / `TokenIssuer` traits, `HookahClient`, `HttpConnector`, `Query`; `retry.rs` (429 + `X-Rate-Limit-Reset`, 5xx backoff, injectable sleeper), `pagination.rs` (`X-Pagination-*`), `status.rs` (Yii error JSON → `Error`) |
 | `src/config/` | `Config`/`Profile` (serde, `deny_unknown_fields`), `ConfigLoader` (0600 writes; parse errors never quote the file), `ConfigStore` trait + `FileConfigStore` (injected into `auth`/`config` handlers), `crm.rs` (subdomain/host/URL normalisation, cleartext warning) |
 | `src/auth/` | `Secret` (redacting newtype), `SecretStore` + `SystemKeyring` (`InMemoryStore` is test-util only), token resolution chain scoped to the profile's CRM host |
+| `src/update/` | `hw self`, never the CRM: `Version` (`YEAR.WEEK.BUILD`, padded weeks equal unpadded), `Target` (published platforms, asset names), `ReleaseSource` + `GitHubReleases` (ureq over github.com, no REST API: latest from the unfollowed `/releases/latest` redirect, as `install.sh` does; HTTPS only, no `Authorization`; `with_base_url` is test-util only), `archive.rs` (`.sha256` sidecar, SHA-256 check before unpacking, in-memory tar.gz/zip extraction), `Installer` + `SystemInstaller` (package-manager and writability preflight, staging next to the binary, rename on Unix / self-replace on Windows, ad-hoc `codesign` on macOS) |
 | `src/dates.rs` | `DateArg` (`today`/`yesterday`/`tomorrow`/`YYYY-MM-DD`) and business-day resolution via `/api/settings` |
 | `src/io/` | `IoStreams` (TTY detection, colour, pager, test buffers) |
 | `src/output/` | `Reporter` + console/json/toon/toml/csv reporters, `terminal_text`/`server_text` (escape control characters on a terminal; piped output stays exact), `transform.rs` (`--jq` via jaq, `--template` via minijinja; compiled before the request) |
-| `src/test_util.rs` | `FakeApi`, `FakeConnector`, `FakeIssuer` — behind `cfg(test)` / the `test-util` feature |
+| `src/test_util.rs` | `FakeApi`, `FakeConnector`, `FakeIssuer`, `FakeReleases`, `FakeInstaller`, in-memory release archives (`release_archive`) — behind `cfg(test)` / the `test-util` feature |
 | `tests/` | Integration tests: `read_only.rs` (every leaf command → only GET + the two allowed POSTs; a new command must be added to its table), `http_client.rs` (httpmock), `cli_*.rs` (`assert_cmd`, exit codes, auth/config), `cli_snapshots.rs` (insta), `business_day.rs`; helpers and fixtures in `tests/common/`, `tests/fixtures/` |
 | `docs/reference/hw.md` | Generated CLI reference — run `scripts/gen-docs.sh`, never edit by hand |
 

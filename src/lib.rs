@@ -14,6 +14,7 @@ pub mod dates;
 pub mod error;
 pub mod io;
 pub mod output;
+pub mod update;
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod test_util;

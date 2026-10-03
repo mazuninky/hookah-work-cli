@@ -12,6 +12,7 @@ mod product;
 mod reference;
 mod report;
 mod sale;
+mod self_update;
 mod storage;
 
 pub use analytics::{AnalyticsCommand, PeriodArgs};
@@ -32,6 +33,7 @@ pub use report::{
     ExpenseExpand, ExpensesArgs, ReportCommand,
 };
 pub use sale::{SaleCommand, SaleExpand, SaleListArgs};
+pub use self_update::{SelfCommand, SelfUpdateArgs};
 pub use storage::{PurchaseExpand, PurchasesArgs, StorageCommand};
 
 use camino::Utf8PathBuf;
@@ -173,6 +175,10 @@ pub enum Command {
 
     /// Print a shell completion script
     Completions(CompletionsArgs),
+
+    /// Check for and install hw updates from GitHub Releases
+    #[command(name = "self", subcommand)]
+    SelfCmd(SelfCommand),
 
     /// Write man pages, completions and the markdown reference into a directory
     #[command(hide = true)]

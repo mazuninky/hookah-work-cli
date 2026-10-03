@@ -1,40 +1,30 @@
 ---
 source: tests/cli_snapshots.rs
-assertion_line: 37
+assertion_line: 69
 expression: help
 ---
-Read-only command-line client for the HookahWork CRM API.
+Download a hw release from GitHub and replace the running hw binary with it.
 
-hw only reads: every command is a GET request, plus the two non-mutating POSTs the API
-needs for logging in and for searching a client. Nothing in the CRM is created, changed
-or deleted.
+Installs the latest release, or the one --to names. The SHA-256 checksum of the release
+archive is verified against the .sha256 file published with it before anything is unpacked;
+on a mismatch nothing is replaced. The new binary takes the old one's place in a single step
+(on macOS it is ad-hoc signed first, so keychain access keeps working).
 
-Usage: hw [OPTIONS] <COMMAND>
+Prebuilt releases exist for x86_64 Linux (glibc), Apple Silicon macOS and x86_64 Windows;
+elsewhere build from source with cargo install. A hw installed by Homebrew, Nix or the system
+package manager is left alone: update it there. Nothing is sent to the CRM.
 
-Commands:
-  ref          Reference data: settings, tables, payment methods, employees, services, bonus levels
-  product      Products and product categories
-  storage      Storages and purchases
-  client       Clients: list, groups, visit history, lookup
-  booking      Bookings: daily list, timetable, single booking, device bookings
-  sale         Sales at tables or over a business day
-  hookah       Hookahs served at tables or over a business day
-  report       Daily reports: expenses, credits, bonus points
-  analytics    Period summaries of hookahs and sales
-  menu         Public electronic menu (works without a token)
-  api          Send a raw GET request to any API path
-  auth         Log in and manage the stored API token
-  config       Inspect and manage configuration profiles
-  completions  Print a shell completion script
-  self         Check for and install hw updates from GitHub Releases
-  help         Print this message or the help of the given subcommand(s)
+Usage: hw self update [OPTIONS]
 
 Options:
+      --to <VERSION>
+          Version to install instead of the latest release: YEAR.WEEK.BUILD, e.g. 2026.41.1 or v2026.41.1
+
+      --allow-downgrade
+          Let --to install a version older than this hw
+
   -h, --help
           Print help (see a summary with '-h')
-
-  -V, --version
-          Print version
 
 Global Options:
   -v, --verbose...
@@ -87,10 +77,7 @@ Global Options:
           
           [default: 3]
 
-Getting started:
-  hw auth login
-  hw booking list --date today
-  hw product list --search чай -F json
-
-Exit codes: 0 ok, 1 runtime/API/network error, 2 not found, 3 configuration error,
-4 authentication error, 5 invalid input.
+Examples:
+  hw self update
+  hw self update --to 2026.41.1
+  hw self update --to 2026.38.2 --allow-downgrade

@@ -46,6 +46,7 @@ Usage: hw [OPTIONS] <COMMAND>
 - `auth` — Log in and manage the stored API token
 - `config` — Inspect and manage configuration profiles
 - `completions` — Print a shell completion script
+- `self` — Check for and install hw updates from GitHub Releases
 
 ### hw ref
 
@@ -738,4 +739,53 @@ Usage: hw completions [OPTIONS] <SHELL>
 **Options**
 
 - `<SHELL>` — Shell to generate the completion script for
+
+### hw self
+
+Check for and install hw updates from GitHub Releases
+
+**Usage**
+
+```text
+Usage: hw self [OPTIONS] <COMMAND>
+```
+
+**Subcommands**
+
+- `check` — Compare this hw with the latest release on GitHub (exit 0 with or without an update)
+- `update` — Replace this hw binary with a release from GitHub, verifying its SHA-256 checksum
+
+#### hw self check
+
+Compare this hw with the latest release on GitHub (exit 0 with or without an update)
+
+**Usage**
+
+```text
+Usage: hw self check [OPTIONS]
+```
+
+#### hw self update
+
+Download a hw release from GitHub and replace the running hw binary with it.
+
+Installs the latest release, or the one --to names. The SHA-256 checksum of the release
+archive is verified against the .sha256 file published with it before anything is unpacked;
+on a mismatch nothing is replaced. The new binary takes the old one's place in a single step
+(on macOS it is ad-hoc signed first, so keychain access keeps working).
+
+Prebuilt releases exist for x86_64 Linux (glibc), Apple Silicon macOS and x86_64 Windows;
+elsewhere build from source with cargo install. A hw installed by Homebrew, Nix or the system
+package manager is left alone: update it there. Nothing is sent to the CRM.
+
+**Usage**
+
+```text
+Usage: hw self update [OPTIONS]
+```
+
+**Options**
+
+- `--to` — Version to install instead of the latest release: YEAR.WEEK.BUILD, e.g. 2026.41.1 or v2026.41.1
+- `--allow-downgrade` — Let --to install a version older than this hw
 
